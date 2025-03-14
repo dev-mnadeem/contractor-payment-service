@@ -75,6 +75,33 @@ describe("POST /balances/deposit/:userId", () => {
   });
 
   /**
+   * A job on a terminated contract can never be settled (paying it is a 409),
+   * so it is not money the client owes through this service and must not
+   * raise the cap.
+   */
+  it("ignores unpaid jobs on terminated contracts", async () => {
+    const { client, contractor } = await seedScenario(ctx.models, {
+      clientBalance: "0.00",
+      status: "terminated",
+      jobs: [{ price: "400.00" }],
+    });
+    const live = await ctx.models.Contract.create({
+      terms: "Live engagement",
+      status: "in_progress",
+      ClientId: client.id,
+      ContractorId: contractor.id,
+    });
+    await ctx.models.Job.create({
+      description: "Billable",
+      priceCents: money.toCents("100.00"),
+      ContractId: live.id,
+    });
+
+    const response = await deposit(client.id, client.id, { amount: "26.00" }).expect(400);
+    expect(response.body.error.details).toEqual({ owed: "100.00", maxDeposit: "25.00" });
+  });
+
+  /**
    * The path parameter must be honoured rather than decorative: a caller who
    * writes `/balances/deposit/999` has to be told no, not quietly credited.
    */

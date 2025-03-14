@@ -2,7 +2,7 @@
 
 const { Op, fn, col } = require("sequelize");
 
-const { ACTIVE_CONTRACT_STATUSES } = require("../enums/ContractStatus");
+const { ACTIVE_CONTRACT_STATUSES, PAYABLE_CONTRACT_STATUSES } = require("../enums/ContractStatus");
 
 function createJobsRepository({ Job, Contract, Profile }) {
   const UNPAID = { paid: false };
@@ -75,6 +75,10 @@ function createJobsRepository({ Job, Contract, Profile }) {
      * Total still owed by a client, summed by the database. A client with a
      * long history can have any number of unpaid jobs, so this must not become
      * "fetch every row and add up one column in JavaScript".
+     *
+     * Only contracts that can still be billed count: a job on a terminated
+     * contract is refused at payment time, so it is not a debt the client can
+     * settle here.
      */
     async sumUnpaidCentsForClient(clientId, transaction) {
       const total = await Job.sum("priceCents", {
@@ -84,7 +88,7 @@ function createJobsRepository({ Job, Contract, Profile }) {
             model: Contract,
             required: true,
             attributes: [],
-            where: { ClientId: clientId },
+            where: { ClientId: clientId, status: PAYABLE_CONTRACT_STATUSES },
           },
         ],
         transaction,
