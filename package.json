@@ -5,7 +5,7 @@
   "description": "REST API for contracts, jobs and payments between clients and contractors.",
   "main": "src/server.js",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12"
   },
   "scripts": {
     "start": "node ./src/server.js",
