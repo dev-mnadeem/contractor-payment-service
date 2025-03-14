@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Local Python virtualenv left over from an earlier toolchain; not part of the service
+project_venv/
+
+# Local database file — recreate it with `npm run seed`
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Test output
+coverage/
+
+# Build output and caches
+dist/
+build/
+.cache/
+.eslintcache
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Logs and scratch
+*.log
+npm-debug.log*
+logs/
+tmp/
+
+# Not tracked in this repository
+.github/
+
+# OS cruft
+.DS_Store
