@@ -1,8 +1,12 @@
 "use strict";
 
-// Load .env if one is present. Absent in production, where the process
-// environment is set by the orchestrator, and absent in CI.
-require("dotenv").config();
+const fs = require("fs");
+
+// A local .env is optional: in the container the environment comes from
+// Compose. Values already set in the process environment win over the file.
+if (fs.existsSync(".env")) {
+  process.loadEnvFile(".env");
+}
 
 /**
  * Every environment-dependent value the service reads lives here, so that no
