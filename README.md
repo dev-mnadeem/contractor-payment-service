@@ -11,7 +11,7 @@ approximately right is the same as being wrong.
 $ curl -s -X POST -H 'profile_id: 1' -H 'Idempotency-Key: demo-1' \
        http://localhost:3001/jobs/2/pay
 {"replayed":false,"payment":{"id":15,"jobId":2,"clientId":1,"contractorId":6,
- "amount":"201.00","idempotencyKey":"demo-1","createdAt":"2026-09-28T12:29:26.884Z"}}
+ "amount":"201.00","idempotencyKey":"demo-1","createdAt":"2026-11-08T08:02:28.080Z"}}
 ```
 
 Send that again and you get the same payment back with `"replayed":true` and a 200. Send it
@@ -19,10 +19,29 @@ without the key and you get a 409. Either way the money moves once.
 
 ## Get it running
 
-Node 18 or newer. There is no external service to install — the database is one SQLite file.
+The database is one SQLite file, so there is no external service to start.
+
+### With Docker Compose
 
 ```bash
-npm install          # sqlite3 downloads a native binding in an install script
+docker compose run --rm seed     # create the schema and load the demo data into the volume
+docker compose up --build -d     # http://localhost:3001, healthy once /readyz answers
+docker compose down              # add -v to throw the ledger volume away too
+```
+
+The seed service sits behind the `tools` profile, so `up` starts only the API. The build is
+multi-stage: `npm ci --omit=dev` runs in a builder, and the runtime stage runs as the
+unprivileged `node` user with a healthcheck on `/readyz`. The SQLite file lives on the
+`payments-data` volume rather than in the image, so rebuilding does not take the ledger with
+it. Set `PORT` in the shell or a `.env` file to publish on a different host port.
+
+### With Node
+
+Node 22.12 or newer (`.nvmrc` pins 22).
+
+```bash
+cp .env.example .env # optional; every value has a default
+npm ci               # sqlite3 downloads a native binding in an install script
 npm run seed         # 9 profiles, 9 contracts, 14 jobs (5 unpaid), 9 payments
 npm start            # http://localhost:3001
 ```
@@ -32,7 +51,7 @@ the fixture rather than duplicating it. `npm run seed:reset` drops every table f
 Identity is asserted with a `profile_id` header — seeded profiles are 1-8, plus profile 9
 (Ada Lovelace) who is the administrator. An OpenAPI reference is served at `/api-docs`.
 
-> If `npm install` succeeds but `require('sqlite3')` throws *Could not locate the bindings
+> If `npm ci` succeeds but `require('sqlite3')` throws *Could not locate the bindings
 > file*, npm skipped install scripts. Unset `ignore-scripts` in your npm config, or run
 > `npm rebuild sqlite3 --ignore-scripts=false`.
 
@@ -170,7 +189,7 @@ both conversions and refuses sub-cent input rather than rounding it away — dep
 | `GET /contracts`, `/contracts/:id` | Only the two profiles named on the contract. Someone else's contract answers **404**, not 403 — a 403 confirms the id exists and turns the endpoint into an oracle over other people's business relationships. |
 | `GET /jobs/unpaid` | Either party, and only for contracts in `in_progress`. |
 | `POST /jobs/:job_id/pay` | Only the client named on the job's contract. Authorisation is the join condition, so a contractor never reaches the payment path. |
-| `POST /balances/deposit/:userId` | `userId` must equal the calling profile. A profile funds only itself. |
+| `POST /balances/deposit/:userId` | Clients only, and `userId` must equal the calling profile. A profile funds only itself. |
 | `GET /payments` | The caller's own ledger rows, as payer or payee. |
 | `GET /admin/*` | Requires `Profile.isAdmin` or an id in `ADMIN_PROFILE_IDS`. These reports aggregate every account's spend and earnings. |
 
@@ -190,50 +209,127 @@ List endpoints return `{ data: [...], page: { limit, offset, total, hasMore } }`
 | `GET` | `/jobs/unpaid` | Nothing outstanding is a 200 with an empty page. |
 | `POST` | `/jobs/:job_id/pay` | 201 on settlement, 200 on an idempotent replay. |
 | `GET` | `/payments` | Newest first. |
-| `POST` | `/balances/deposit/:userId` | Body `{ "amount": "50.00" }`. Capped at 25% of what is currently owed, rounded down. |
-| `GET` | `/admin/best-profession` | `?start=&end=` |
+| `POST` | `/balances/deposit/:userId` | Body `{ "amount": "50.00" }`. Capped at 25% of what is currently owed on contracts that are not terminated, rounded down. |
+| `GET` | `/admin/best-profession` | `?start=&end=` — a date-only `end` includes that whole day (UTC). |
 | `GET` | `/admin/best-clients` | `?start=&end=&limit=` — limit defaults to 2, capped at 100. |
 
 Errors are always `{ "error": { "code": "...", "message": "..." } }`, unmatched routes
 included — branch on `code`.
 
+## A session against the demo data
+
+Every exchange below was captured from a fresh `docker compose` stack after
+`docker compose run --rm seed`, in this order. Timestamps will differ on your machine.
+
+Profile 1 (Harry Potter) has one contract under way and one unpaid job on it. Asking for a
+contract that is not theirs gets the same answer as one that does not exist:
+
+```console
+$ curl -s -H 'profile_id: 1' http://localhost:3001/jobs/unpaid
+{"data":[{"id":2,"description":"Scheduler audit: fair-share module","price":"201.00","paid":false,
+ "paymentDate":null,"contractId":2,"contractStatus":"in_progress"}],
+ "page":{"limit":25,"offset":0,"total":1,"hasMore":false}}
+
+$ curl -s -H 'profile_id: 1' http://localhost:3001/contracts/5
+{"error":{"code":"not_found","message":"No contract with that id belongs to this profile"}}
+```
+
+After the settlement at the top of this page, the same job cannot be paid again, and the
+key cannot be borrowed for a different payment. Both answer 409:
+
+```console
+$ curl -s -X POST -H 'profile_id: 1' http://localhost:3001/jobs/2/pay
+{"error":{"code":"job_already_paid","message":"This job has already been paid"}}
+
+$ curl -s -X POST -H 'profile_id: 2' -H 'Idempotency-Key: demo-1' http://localhost:3001/jobs/3/pay
+{"error":{"code":"idempotency_key_reused",
+ "message":"This Idempotency-Key was already used for a different payment"}}
+```
+
+The other refusals each have their own status and code: a terminated contract is 409, a
+contractor trying to pay is 404 (the job is not payable *by them*), and a short balance is 422:
+
 ```console
 $ curl -s -X POST -H 'profile_id: 1' http://localhost:3001/jobs/1/pay
 {"error":{"code":"contract_terminated","message":"The contract for this job has been terminated"}}
+
+$ curl -s -X POST -H 'profile_id: 6' http://localhost:3001/jobs/3/pay       # a contractor
+{"error":{"code":"not_found","message":"No payable job with that id belongs to this client"}}
+
+$ curl -s -X POST -H 'profile_id: 4' http://localhost:3001/jobs/5/pay       # 1.30 against 200.00
+{"error":{"code":"insufficient_funds",
+ "message":"Paying this job requires 200.00 and the balance does not cover it"}}
+```
+
+Profile 4 owes 200.00, so the most it may deposit is 50.00. Going over is a 400, and so is a
+sub-cent amount, whether it arrives as a string or a JSON number:
+
+```console
+$ curl -s -X POST -H 'profile_id: 4' -H 'Content-Type: application/json' \
+       -d '{"amount":"50.01"}' http://localhost:3001/balances/deposit/4
+{"error":{"code":"invalid_request","message":"A deposit may not exceed 25% of the 200.00 currently owed",
+ "details":{"owed":"200.00","maxDeposit":"50.00"}}}
+
+$ curl -s -X POST -H 'profile_id: 4' -H 'Content-Type: application/json' \
+       -d '{"amount":1.005}' http://localhost:3001/balances/deposit/4
+{"error":{"code":"invalid_request","message":"\"1.005\" is not a valid monetary amount"}}
+
+$ curl -s -X POST -H 'profile_id: 4' -H 'Content-Type: application/json' \
+       -d '{"amount":"50.00"}' http://localhost:3001/balances/deposit/4
+{"message":"Deposit accepted","profile":{"id":4,"firstName":"Ash","lastName":"Ketchum",
+ "fullName":"Ash Ketchum","profession":"Pokemon Master","type":"client","balance":"51.30"}}
+```
+
+The contractor's ledger now starts with the payment made above:
+
+```console
+$ curl -s -H 'profile_id: 6' 'http://localhost:3001/payments?limit=2'
+{"data":[{"id":15,"jobId":2,"jobDescription":"Scheduler audit: fair-share module","clientId":1,
+  "contractorId":6,"amount":"201.00","idempotencyKey":"demo-1","createdAt":"2026-11-08T08:02:28.080Z"},
+ {"id":8,"jobId":8,"jobDescription":"Build migration: toolchain survey","clientId":2,
+  "contractorId":6,"amount":"200.00","idempotencyKey":null,"createdAt":"2020-08-16T19:11:26.737Z"}],
+ "page":{"limit":2,"offset":0,"total":6,"hasMore":true}}
+```
+
+The reports answer only the administrator (anyone else gets a 403). A date-only window covers whole days, so
+`start=end=2020-08-17` picks up the two jobs paid that evening:
+
+```console
+$ curl -s -H 'profile_id: 1' 'http://localhost:3001/admin/best-clients?start=2020-08-01&end=2020-08-31'
+{"error":{"code":"forbidden","message":"This endpoint requires an administrator profile"}}
+
+$ curl -s -H 'profile_id: 9' 'http://localhost:3001/admin/best-profession?start=2020-08-01&end=2020-08-17'
+{"profession":"Programmer","totalEarned":"2683.00"}
+
+$ curl -s -H 'profile_id: 9' 'http://localhost:3001/admin/best-clients?start=2020-08-01&end=2020-08-31&limit=3'
+{"data":[{"id":4,"fullName":"Ash Ketchum","paid":"2020.00"},{"id":1,"fullName":"Harry Potter","paid":"442.00"},
+ {"id":2,"fullName":"Mr Robot","paid":"442.00"}]}
+
+$ curl -s -H 'profile_id: 9' 'http://localhost:3001/admin/best-clients?start=2020-08-17&end=2020-08-17'
+{"data":[{"id":1,"fullName":"Harry Potter","paid":"200.00"},{"id":3,"fullName":"John Snow","paid":"200.00"}]}
 ```
 
 ## Settings
 
 Every environment-dependent value is read once, in `src/config.js`: `PORT` (3001),
 `DB_STORAGE` (`./database.sqlite3`), `DB_LOGGING` (false), `MAX_PAGE_SIZE` (100) and
-`ADMIN_PROFILE_IDS` (empty). Copy `.env.example` to `.env` to override any of them.
+`ADMIN_PROFILE_IDS` (empty). Copy `.env.example` to `.env` to override any of them; Node's
+own `process.loadEnvFile` reads it, and a variable already set in the environment wins.
 
 ## Tests
 
 ```console
 $ npm test
 Test Suites: 10 passed, 10 total
-Tests:       143 passed, 143 total
+Tests:       156 passed, 156 total
 ```
 
-`npm run test:coverage` reports 90.48% of statements and 88.75% of branches covered. The
+`npm run test:coverage` reports 90.01% of statements and 87.82% of branches covered. The
 integration suites build the same container the server does, over a throwaway SQLite
 file, so they exercise real SQL — the conditional UPDATEs, the unique indexes and the
 transaction boundaries. That matters here: the double-spend guards live in `WHERE` clauses,
 and a mocked ORM cannot show whether they work. `npm run verify` runs ESLint, the Prettier
-check and the suite, which is what CI runs on Node 18, 20 and 22.
-
-## Containers
-
-```bash
-docker compose run --rm seed     # create the schema in the named volume
-docker compose up --build        # http://localhost:3001
-```
-
-Multi-stage build, runtime stage runs as the unprivileged `node` user, healthcheck polls
-`/readyz`. The SQLite file lives on the `payments-data` volume rather than in the image, so
-rebuilding does not take the ledger with it. **The image has not been built or booted in
-this checkout** — only `docker compose config` was run against the compose file.
+check and the suite in one go.
 
 ## What this deliberately does not do
 
@@ -245,6 +341,11 @@ this checkout** — only `docker compose config` was run against the compose fil
 - **No write endpoints for jobs and contracts.** They arrive via the seed script.
 - **A deposit is capped at 25% of what is currently owed**, so a client owing nothing cannot
   deposit at all — 25% of zero is zero. That follows the rule as written rather than
-  guessing at an exception.
+  guessing at an exception. Jobs on terminated contracts do not count as owed, because the
+  service will never let them be paid.
 - **SQLite only.** The write queue in `src/db.js` is shaped by its single-writer model; on a
   server engine it would be unnecessary, though harmless.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
