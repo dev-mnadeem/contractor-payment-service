@@ -34,9 +34,12 @@ function createJobsRepository({ Job, Contract, Profile }) {
     },
 
     /**
-     * Load a job together with both parties, but only if the caller is the
-     * client on its contract. Authorisation is the join condition — an
-     * authenticated contractor cannot reach a client's payment path at all.
+     * Load a job with its contract, but only if the caller is the client on
+     * that contract. Authorisation is the join condition — an authenticated
+     * contractor cannot reach a client's payment path at all.
+     *
+     * Balances are deliberately not loaded: both movements are conditional
+     * UPDATEs, so a balance read here would only ever be stale.
      */
     async findPayableByClient(jobId, clientId, transaction) {
       return Job.findOne({
@@ -45,11 +48,8 @@ function createJobsRepository({ Job, Contract, Profile }) {
           {
             model: Contract,
             required: true,
+            attributes: ["id", "status", "ClientId", "ContractorId"],
             where: { ClientId: clientId },
-            include: [
-              { model: Profile, as: "Contractor", attributes: ["id", "balanceCents"] },
-              { model: Profile, as: "Client", attributes: ["id", "balanceCents"] },
-            ],
           },
         ],
         transaction,

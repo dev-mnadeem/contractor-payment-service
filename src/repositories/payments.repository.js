@@ -12,10 +12,6 @@ function createPaymentsRepository({ Payment, Job }) {
       return Payment.findOne({ where: { idempotencyKey: key }, transaction });
     },
 
-    async findByJobId(jobId, transaction) {
-      return Payment.findOne({ where: { JobId: jobId }, transaction });
-    },
-
     /** The caller's payment history, as payer or as payee. */
     async listForProfile(profileId, { limit, offset }) {
       return Payment.findAndCountAll({

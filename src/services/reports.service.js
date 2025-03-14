@@ -2,6 +2,7 @@
 
 const { ValidationError } = require("../errors");
 const money = require("../money");
+const { parsePositiveInteger } = require("../pagination");
 
 const DEFAULT_BEST_CLIENT_LIMIT = 2;
 const MAX_BEST_CLIENT_LIMIT = 100;
@@ -76,14 +77,7 @@ function parseRange(start, end) {
 }
 
 function parseLimit(raw) {
-  if (raw === undefined || raw === "") return DEFAULT_BEST_CLIENT_LIMIT;
-  if (!/^\d+$/.test(String(raw))) {
-    throw new ValidationError("limit must be a positive integer");
-  }
-  const limit = Number(raw);
-  if (limit < 1) {
-    throw new ValidationError("limit must be a positive integer");
-  }
+  const limit = parsePositiveInteger(raw, "limit", DEFAULT_BEST_CLIENT_LIMIT);
   if (limit > MAX_BEST_CLIENT_LIMIT) {
     throw new ValidationError(`limit may not exceed ${MAX_BEST_CLIENT_LIMIT}`);
   }

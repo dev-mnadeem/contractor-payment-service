@@ -15,9 +15,6 @@ const { ValidationError } = require("./errors");
 const MINOR_UNITS_PER_UNIT = 100;
 const DECIMAL_PLACES = 2;
 
-/** 2^53 - 1 cents. Above this, integer arithmetic in JS stops being exact. */
-const MAX_SAFE_CENTS = Number.MAX_SAFE_INTEGER;
-
 const DECIMAL_PATTERN = /^-?\d+(\.\d{1,2})?$/;
 
 /**
@@ -79,7 +76,6 @@ function fromDatabase(value) {
 }
 
 module.exports = {
-  MAX_SAFE_CENTS,
   MINOR_UNITS_PER_UNIT,
   applyRatioFloor,
   format,
