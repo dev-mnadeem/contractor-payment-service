@@ -150,6 +150,19 @@ describe("GET /admin/best-profession", () => {
     expect(response.body).toEqual({ profession: "Programmer", totalEarned: "500.50" });
   });
 
+  it("includes the whole of a date-only end day", async () => {
+    const response = await asAdmin("/admin/best-profession?start=2021-06-15&end=2021-06-15").expect(
+      200
+    );
+    expect(response.body).toEqual({ profession: "Programmer", totalEarned: "500.50" });
+  });
+
+  it("takes a full end timestamp exactly", async () => {
+    await asAdmin("/admin/best-profession?start=2021-06-15&end=2021-06-15T11:59:59.999Z").expect(
+      404
+    );
+  });
+
   it("ignores jobs paid outside the window", async () => {
     const response = await asAdmin("/admin/best-profession?start=2019-01-01&end=2019-12-31").expect(
       200
@@ -194,6 +207,13 @@ describe("GET /admin/best-clients", () => {
     const response = await asAdmin(`/admin/best-clients?${RANGE}&limit=1`).expect(200);
     expect(response.body.data).toHaveLength(1);
     expect(response.body.data[0].fullName).toBe("Big Spender");
+  });
+
+  it("counts payments made during a date-only end day", async () => {
+    const response = await asAdmin("/admin/best-clients?start=2021-06-15&end=2021-06-15").expect(
+      200
+    );
+    expect(response.body.data.map((row) => row.paid)).toEqual(["500.50", "100.00"]);
   });
 
   it("returns an empty list, not a 404, when nobody paid in the window", async () => {

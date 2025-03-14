@@ -41,6 +41,16 @@ function createReportsService({ jobs }) {
   return { bestClients, bestProfession };
 }
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const MS_PER_DAY = 86_400_000;
+const LAST_MILLISECOND_OF_DAY = MS_PER_DAY - 1;
+
+/**
+ * `end=2020-08-17` means "up to and including the 17th". `new Date()` reads a
+ * bare date as midnight UTC, which would silently drop every job paid later
+ * that day, so a date-only end is widened to the last millisecond of the day.
+ * A full timestamp is taken exactly as given.
+ */
 function parseRange(start, end) {
   if (!start || !end) {
     throw new ValidationError("Both start and end dates are required");
@@ -48,6 +58,9 @@ function parseRange(start, end) {
 
   const from = new Date(start);
   const to = new Date(end);
+  if (DATE_ONLY.test(String(end))) {
+    to.setTime(to.getTime() + LAST_MILLISECOND_OF_DAY);
+  }
 
   if (Number.isNaN(from.getTime())) {
     throw new ValidationError(`start is not a valid date: ${start}`);
