@@ -1,9 +1,13 @@
 node_modules
+project_venv
 coverage
 .git
 .github
 *.sqlite3
 *.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
 .env
+.env.*
 docs
 README.md
