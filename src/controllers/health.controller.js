@@ -13,14 +13,17 @@ function createHealthController({ sequelize }) {
       res.json({ status: "ok", uptimeSeconds: Math.round(process.uptime()) });
     },
 
+    /**
+     * The probe is unauthenticated, so the driver's error (which names the
+     * database file path) goes to the log, not to whoever is polling.
+     */
     async ready(_req, res) {
       try {
         await sequelize.authenticate();
         res.json({ status: "ok", database: "reachable" });
       } catch (error) {
-        res
-          .status(HTTP_SERVICE_UNAVAILABLE)
-          .json({ status: "degraded", database: "unreachable", detail: error.message });
+        console.error(`Readiness check failed: ${error.message}`);
+        res.status(HTTP_SERVICE_UNAVAILABLE).json({ status: "degraded", database: "unreachable" });
       }
     },
   };

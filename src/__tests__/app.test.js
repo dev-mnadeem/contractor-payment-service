@@ -33,6 +33,20 @@ describe("health probes", () => {
     const response = await request(ctx.app).get("/readyz").expect(200);
     expect(response.body).toEqual({ status: "ok", database: "reachable" });
   });
+
+  it("answers 503 without leaking the driver error when the database is gone", async () => {
+    const authenticate = jest
+      .spyOn(ctx.sequelize, "authenticate")
+      .mockRejectedValueOnce(new Error("SQLITE_CANTOPEN: /srv/private/ledger.sqlite3"));
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await request(ctx.app).get("/readyz").expect(503);
+
+    expect(response.body).toEqual({ status: "degraded", database: "unreachable" });
+    expect(JSON.stringify(response.body)).not.toContain("ledger.sqlite3");
+    authenticate.mockRestore();
+    logged.mockRestore();
+  });
 });
 
 describe("authentication", () => {
