@@ -3,7 +3,6 @@
 const express = require("express");
 
 const { createJobsController } = require("../controllers/jobs.controller");
-const { asyncHandler } = require("../middleware/errorHandler");
 
 function createJobsRouter(services) {
   const router = express.Router();
@@ -26,7 +25,7 @@ function createJobsRouter(services) {
    *       200: { description: A page of unpaid jobs }
    *       401: { $ref: '#/components/responses/Error' }
    */
-  router.get("/unpaid", asyncHandler(controller.listUnpaid));
+  router.get("/unpaid", controller.listUnpaid);
 
   /**
    * @openapi
@@ -57,7 +56,7 @@ function createJobsRouter(services) {
    *       409: { description: Already paid, or the contract is terminated }
    *       422: { description: The client's balance does not cover the job price }
    */
-  router.post("/:job_id/pay", asyncHandler(controller.pay));
+  router.post("/:job_id/pay", controller.pay);
 
   return router;
 }

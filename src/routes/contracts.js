@@ -3,7 +3,6 @@
 const express = require("express");
 
 const { createContractsController } = require("../controllers/contracts.controller");
-const { asyncHandler } = require("../middleware/errorHandler");
 
 /**
  * @openapi
@@ -54,7 +53,7 @@ function createContractsRouter(services) {
    *       400: { $ref: '#/components/responses/Error' }
    *       401: { $ref: '#/components/responses/Error' }
    */
-  router.get("/", asyncHandler(controller.list));
+  router.get("/", controller.list);
 
   /**
    * @openapi
@@ -76,7 +75,7 @@ function createContractsRouter(services) {
    *       401: { $ref: '#/components/responses/Error' }
    *       404: { $ref: '#/components/responses/Error' }
    */
-  router.get("/:id", asyncHandler(controller.getById));
+  router.get("/:id", controller.getById);
 
   return router;
 }

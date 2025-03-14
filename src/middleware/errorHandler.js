@@ -5,15 +5,6 @@ const { AppError, NotFoundError } = require("../errors");
 
 const HTTP_INTERNAL_SERVER_ERROR = 500;
 
-/**
- * Wrap an async handler so a rejected promise reaches Express's error pipeline.
- * Express 4 does not await handlers, so without this an async throw becomes an
- * unhandled rejection and the request hangs until the client times out.
- */
-function asyncHandler(handler) {
-  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
-}
-
 /** Anything that fell through the router is a 404 in the same JSON shape as every other error. */
 function notFoundHandler(req, _res, next) {
   next(new NotFoundError(`No route matches ${req.method} ${req.path}`));
@@ -40,4 +31,4 @@ function errorHandler(error, _req, res, _next) {
   });
 }
 
-module.exports = { asyncHandler, errorHandler, notFoundHandler };
+module.exports = { errorHandler, notFoundHandler };

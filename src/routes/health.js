@@ -3,7 +3,6 @@
 const express = require("express");
 
 const { createHealthController } = require("../controllers/health.controller");
-const { asyncHandler } = require("../middleware/errorHandler");
 
 function createHealthRouter({ sequelize }) {
   const router = express.Router();
@@ -31,7 +30,7 @@ function createHealthRouter({ sequelize }) {
    *       200: { description: Database reachable }
    *       503: { description: Database unreachable }
    */
-  router.get("/readyz", asyncHandler(controller.ready));
+  router.get("/readyz", controller.ready);
 
   return router;
 }

@@ -96,6 +96,27 @@ describe("error envelope", () => {
   });
 });
 
+/**
+ * Express 5 forwards a rejected async handler to the error middleware itself;
+ * this pins that a failure inside async middleware still ends in the JSON
+ * envelope rather than a hung request.
+ */
+describe("async failures", () => {
+  it("turns a rejected lookup in async middleware into a JSON 500", async () => {
+    const lookup = jest
+      .spyOn(ctx.models.Profile, "findByPk")
+      .mockRejectedValueOnce(new Error("SQLITE_BUSY: database is locked"));
+
+    const response = await request(ctx.app).get("/contracts").set("profile_id", "1").expect(500);
+
+    expect(response.body.error).toEqual({
+      code: "internal_error",
+      message: "An unexpected error occurred",
+    });
+    lookup.mockRestore();
+  });
+});
+
 describe("OpenAPI", () => {
   it("serves the interactive reference", async () => {
     const response = await request(ctx.app).get("/api-docs/").expect(200);

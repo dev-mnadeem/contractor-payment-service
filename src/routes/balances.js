@@ -3,7 +3,6 @@
 const express = require("express");
 
 const { createBalancesController } = require("../controllers/balances.controller");
-const { asyncHandler } = require("../middleware/errorHandler");
 
 function createBalancesRouter(services) {
   const router = express.Router();
@@ -43,7 +42,7 @@ function createBalancesRouter(services) {
    *       401: { $ref: '#/components/responses/Error' }
    *       403: { description: Not a client, or depositing into someone else's balance }
    */
-  router.post("/deposit/:userId", asyncHandler(controller.deposit));
+  router.post("/deposit/:userId", controller.deposit);
 
   return router;
 }

@@ -9,7 +9,7 @@ const {
   UnauthenticatedError,
   ValidationError,
 } = require("../errors");
-const { asyncHandler, errorHandler, notFoundHandler } = require("../middleware/errorHandler");
+const { errorHandler, notFoundHandler } = require("../middleware/errorHandler");
 
 const mockResponse = () => {
   const res = {};
@@ -72,24 +72,5 @@ describe("notFoundHandler", () => {
     const error = next.mock.calls[0][0];
     expect(error).toBeInstanceOf(NotFoundError);
     expect(error.message).toBe("No route matches POST /nope");
-  });
-});
-
-describe("asyncHandler", () => {
-  it("forwards a rejected promise to next instead of leaving it unhandled", async () => {
-    const next = jest.fn();
-    const boom = new Error("boom");
-
-    await asyncHandler(async () => {
-      throw boom;
-    })({}, mockResponse(), next);
-
-    expect(next).toHaveBeenCalledWith(boom);
-  });
-
-  it("does not call next when the handler resolves", async () => {
-    const next = jest.fn();
-    await asyncHandler(async () => "fine")({}, mockResponse(), next);
-    expect(next).not.toHaveBeenCalled();
   });
 });

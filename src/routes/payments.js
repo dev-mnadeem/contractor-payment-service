@@ -3,7 +3,6 @@
 const express = require("express");
 
 const { createPaymentsController } = require("../controllers/payments.controller");
-const { asyncHandler } = require("../middleware/errorHandler");
 
 function createPaymentsRouter(services) {
   const router = express.Router();
@@ -24,7 +23,7 @@ function createPaymentsRouter(services) {
    *       200: { description: A page of payments }
    *       401: { $ref: '#/components/responses/Error' }
    */
-  router.get("/", asyncHandler(controller.list));
+  router.get("/", controller.list);
 
   return router;
 }

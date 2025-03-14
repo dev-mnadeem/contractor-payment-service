@@ -3,7 +3,6 @@
 const express = require("express");
 
 const { createAdminController } = require("../controllers/admin.controller");
-const { asyncHandler } = require("../middleware/errorHandler");
 
 function createAdminRouter(services) {
   const router = express.Router();
@@ -32,7 +31,7 @@ function createAdminRouter(services) {
    *       403: { description: Not an administrator }
    *       404: { description: No jobs were paid in that range }
    */
-  router.get("/best-profession", asyncHandler(controller.bestProfession));
+  router.get("/best-profession", controller.bestProfession);
 
   /**
    * @openapi
@@ -59,7 +58,7 @@ function createAdminRouter(services) {
    *       400: { description: Missing dates or a malformed limit }
    *       403: { description: Not an administrator }
    */
-  router.get("/best-clients", asyncHandler(controller.bestClients));
+  router.get("/best-clients", controller.bestClients);
 
   return router;
 }

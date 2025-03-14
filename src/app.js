@@ -6,7 +6,7 @@ const swaggerUi = require("swagger-ui-express");
 const { createContainer } = require("./container");
 const defaultModels = require("./model");
 const { createGetProfile } = require("./middleware/getProfile");
-const { asyncHandler, errorHandler, notFoundHandler } = require("./middleware/errorHandler");
+const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 const { requireAdmin } = require("./middleware/requireAdmin");
 const { buildOpenApiSpec } = require("./openapi");
 const { createAdminRouter } = require("./routes/admin");
@@ -30,7 +30,7 @@ function createApp(container = defaultContainer()) {
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
   app.disable("x-powered-by");
 
-  const getProfile = asyncHandler(createGetProfile({ models }));
+  const getProfile = createGetProfile({ models });
 
   app.use(createHealthRouter({ sequelize }));
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(buildOpenApiSpec()));

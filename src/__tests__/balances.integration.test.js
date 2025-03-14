@@ -147,6 +147,16 @@ describe("POST /balances/deposit/:userId", () => {
     }
   );
 
+  it("answers a request with no JSON body with a 400, not a 500", async () => {
+    const { client } = await seedScenario(ctx.models, { jobs: [{ price: "400.00" }] });
+
+    const response = await request(ctx.app)
+      .post(`/balances/deposit/${client.id}`)
+      .set("profile_id", String(client.id))
+      .expect(400);
+    expect(response.body.error.code).toBe("invalid_request");
+  });
+
   it("refuses a deposit when nothing is owed, because 25% of nothing is nothing", async () => {
     const { client } = await seedScenario(ctx.models, { clientBalance: "0.00", jobs: [] });
 
