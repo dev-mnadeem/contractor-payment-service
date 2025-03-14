@@ -21,12 +21,16 @@ const MAX_SAFE_CENTS = Number.MAX_SAFE_INTEGER;
 const DECIMAL_PATTERN = /^-?\d+(\.\d{1,2})?$/;
 
 /**
- * Convert a decimal amount — "10.99", 10.99 or 1099 cents already — into an
- * exact integer number of cents. Rejects anything with sub-cent precision
- * rather than silently rounding someone's money away.
+ * Convert a decimal amount — "10.99" or 10.99 — into an exact integer number of
+ * cents. Rejects anything with sub-cent precision rather than silently rounding
+ * someone's money away.
+ *
+ * A JSON number is read through `String()`, not `toFixed()`: `toFixed` rounds,
+ * so `{"amount": 1.005}` would otherwise be accepted as 1.00 or 1.01 while the
+ * same value sent as a string is refused.
  */
 function toCents(amount) {
-  const text = typeof amount === "number" ? amount.toFixed(DECIMAL_PLACES) : String(amount).trim();
+  const text = typeof amount === "number" ? String(amount) : String(amount).trim();
 
   if (!DECIMAL_PATTERN.test(text)) {
     throw new ValidationError(`"${amount}" is not a valid monetary amount`);

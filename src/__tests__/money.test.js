@@ -25,6 +25,13 @@ describe("money", () => {
         expect(() => money.toCents(input)).toThrow(ValidationError);
       }
     );
+
+    it.each([1.005, 0.001, 12.345, 1e21, Number.NaN, Number.POSITIVE_INFINITY])(
+      "rejects the JSON number %p instead of rounding it",
+      (input) => {
+        expect(() => money.toCents(input)).toThrow(ValidationError);
+      }
+    );
   });
 
   describe("format", () => {

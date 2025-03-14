@@ -105,15 +105,20 @@ describe("POST /balances/deposit/:userId", () => {
     expect(response.body.error.message).toMatch(/Only clients/);
   });
 
-  it.each(["0", "-5.00", "abc", "1.005", ""])("refuses the malformed amount %p", async (amount) => {
-    const { client } = await seedScenario(ctx.models, {
-      clientBalance: "0.00",
-      jobs: [{ price: "400.00" }],
-    });
+  it.each(["0", "-5.00", "abc", "1.005", "", 1.005, 50.001])(
+    "refuses the malformed amount %p",
+    async (amount) => {
+      const { client } = await seedScenario(ctx.models, {
+        clientBalance: "0.00",
+        jobs: [{ price: "400.00" }],
+      });
 
-    await deposit(client.id, client.id, { amount }).expect(400);
-    expect(money.fromDatabase((await ctx.models.Profile.findByPk(client.id)).balanceCents)).toBe(0);
-  });
+      await deposit(client.id, client.id, { amount }).expect(400);
+      expect(money.fromDatabase((await ctx.models.Profile.findByPk(client.id)).balanceCents)).toBe(
+        0
+      );
+    }
+  );
 
   it("refuses a deposit when nothing is owed, because 25% of nothing is nothing", async () => {
     const { client } = await seedScenario(ctx.models, { clientBalance: "0.00", jobs: [] });
