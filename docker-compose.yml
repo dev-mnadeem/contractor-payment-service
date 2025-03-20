@@ -1,0 +1,33 @@
+services:
+  api:
+    build: .
+    image: contractor-payment-service
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_STORAGE: /data/database.sqlite3
+      MAX_PAGE_SIZE: ${MAX_PAGE_SIZE:-100}
+      ADMIN_PROFILE_IDS: ${ADMIN_PROFILE_IDS:-}
+    volumes:
+      # The SQLite file is the whole database. Keep it on a named volume so a
+      # rebuilt image does not take the ledger with it.
+      - payments-data:/data
+    restart: unless-stopped
+
+  # One-shot: create the schema and load the demo dataset into the same volume.
+  #   docker compose run --rm seed
+  seed:
+    build: .
+    image: contractor-payment-service
+    profiles: ["tools"]
+    environment:
+      NODE_ENV: production
+      DB_STORAGE: /data/database.sqlite3
+    volumes:
+      - payments-data:/data
+    command: ["node", "scripts/seedDb.js"]
+
+volumes:
+  payments-data:
