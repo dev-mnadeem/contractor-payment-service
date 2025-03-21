@@ -1,0 +1,141 @@
+{
+  "mode": "Disposable local SQLite; profile header is an identity assertion, not authentication",
+  "exchanges": [
+    {
+      "request": "GET /readyz",
+      "status": 200,
+      "response": {
+        "status": "ok",
+        "database": "reachable"
+      }
+    },
+    {
+      "request": "GET /contracts",
+      "status": 401,
+      "response": {
+        "error": {
+          "code": "unauthenticated",
+          "message": "A valid profile_id header is required"
+        }
+      }
+    },
+    {
+      "request": "GET /contracts",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": 2,
+            "terms": "Kernel scheduler audit, invoiced per module",
+            "status": "in_progress",
+            "clientId": 1,
+            "contractorId": 6,
+            "createdAt": "2026-10-28T15:44:26.916Z"
+          }
+        ],
+        "page": {
+          "limit": 25,
+          "offset": 0,
+          "total": 1,
+          "hasMore": false
+        }
+      }
+    },
+    {
+      "request": "POST /jobs/2/pay",
+      "status": 201,
+      "response": {
+        "replayed": false,
+        "payment": {
+          "id": 15,
+          "jobId": 2,
+          "clientId": 1,
+          "contractorId": 6,
+          "amount": "201.00",
+          "idempotencyKey": "native-fixture-payment",
+          "createdAt": "2026-10-28T15:44:27.349Z"
+        }
+      }
+    },
+    {
+      "request": "POST /jobs/2/pay",
+      "status": 200,
+      "response": {
+        "replayed": true,
+        "payment": {
+          "id": 15,
+          "jobId": 2,
+          "clientId": 1,
+          "contractorId": 6,
+          "amount": "201.00",
+          "idempotencyKey": "native-fixture-payment",
+          "createdAt": "2026-10-28T15:44:27.349Z"
+        }
+      }
+    },
+    {
+      "request": "GET /payments",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": 15,
+            "jobId": 2,
+            "jobDescription": "Scheduler audit: fair-share module",
+            "clientId": 1,
+            "contractorId": 6,
+            "amount": "201.00",
+            "idempotencyKey": "native-fixture-payment",
+            "createdAt": "2026-10-28T15:44:27.349Z"
+          },
+          {
+            "id": 9,
+            "jobId": 9,
+            "jobDescription": "Rehearsal day two",
+            "clientId": 1,
+            "contractorId": 5,
+            "amount": "200.00",
+            "idempotencyKey": null,
+            "createdAt": "2020-08-17T19:11:26.737Z"
+          },
+          {
+            "id": 12,
+            "jobId": 12,
+            "jobDescription": "Scheduler audit: tracing hooks",
+            "clientId": 1,
+            "contractorId": 6,
+            "amount": "21.00",
+            "idempotencyKey": null,
+            "createdAt": "2020-08-15T19:11:26.737Z"
+          },
+          {
+            "id": 7,
+            "jobId": 7,
+            "jobDescription": "Scheduler audit: preemption module",
+            "clientId": 1,
+            "contractorId": 6,
+            "amount": "200.00",
+            "idempotencyKey": null,
+            "createdAt": "2020-08-15T19:11:26.737Z"
+          },
+          {
+            "id": 11,
+            "jobId": 11,
+            "jobDescription": "Rehearsal room hire",
+            "clientId": 1,
+            "contractorId": 5,
+            "amount": "21.00",
+            "idempotencyKey": null,
+            "createdAt": "2020-08-10T19:11:26.737Z"
+          }
+        ],
+        "page": {
+          "limit": 25,
+          "offset": 0,
+          "total": 5,
+          "hasMore": false
+        }
+      }
+    }
+  ]
+}

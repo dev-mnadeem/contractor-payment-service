@@ -19,7 +19,7 @@ without the key and you get a 409. Either way the money moves once.
 
 ## Get it running
 
-Node 18 or newer. There is no external service to install — the database is one SQLite file.
+Node 22 (the validated runtime). There is no external service to install — the database is one SQLite file.
 
 ```bash
 npm install          # sqlite3 downloads a native binding in an install script
@@ -221,7 +221,7 @@ integration suites build the same container the server does, over a throwaway SQ
 file, so they exercise real SQL — the conditional UPDATEs, the unique indexes and the
 transaction boundaries. That matters here: the double-spend guards live in `WHERE` clauses,
 and a mocked ORM cannot show whether they work. `npm run verify` runs ESLint, the Prettier
-check and the suite, which is what CI runs on Node 18, 20 and 22.
+check and the suite, which is what CI runs on Node 22.
 
 ## Containers
 
@@ -248,3 +248,18 @@ this checkout** — only `docker compose config` was run against the compose fil
   guessing at an exception.
 - **SQLite only.** The write queue in `src/db.js` is shaped by its single-writer model; on a
   server engine it would be unnecessary, though harmless.
+
+## Verified native payment flow
+
+![Native payment and replay responses](docs/screenshots/native-api.png)
+
+A throwaway SQLite database was seeded twice, then exercised over HTTP: missing
+profile assertion rejected, own contracts listed, one job paid, and the same
+idempotency key replayed with the original payment ID. The
+[captured responses](docs/native-api.json) use synthetic fixture data.
+The `profile_id` header remains an identity assertion and requires a trusted
+authentication layer before external deployment.
+
+## Author
+
+[**Muhammad Nadeem**](https://github.com/dev-mnadeem)
